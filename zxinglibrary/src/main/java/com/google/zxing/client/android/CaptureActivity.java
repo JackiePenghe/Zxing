@@ -47,6 +47,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.KeyEvent;
@@ -70,6 +72,7 @@ import java.text.DateFormat;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * This activity opens the camera and does the actual scanning on a background thread. It draws a
@@ -79,7 +82,7 @@ import java.util.Map;
  * @author dswitkin@google.com (Daniel Switkin)
  * @author Sean Owen
  */
-public final class CaptureActivity extends Activity implements SurfaceHolder.Callback {
+public  class CaptureActivity extends Activity implements SurfaceHolder.Callback {
 
     private static final String TAG = CaptureActivity.class.getSimpleName();
 
@@ -275,6 +278,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
                 case Surface.ROTATION_0:
                 case Surface.ROTATION_90:
                     return ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+                case Surface.ROTATION_180:
+                case Surface.ROTATION_270:
                 default:
                     return ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE;
             }
@@ -283,6 +288,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
                 case Surface.ROTATION_0:
                 case Surface.ROTATION_270:
                     return ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+                case Surface.ROTATION_180:
+                case Surface.ROTATION_90:
                 default:
                     return ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT;
             }
@@ -335,7 +342,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
                     finish();
                     return true;
                 }
-                if ((source == IntentSource.NONE || source == IntentSource.ZXING_LINK) && lastResult != null) {
+                boolean cache = source == IntentSource.NONE || source == IntentSource.ZXING_LINK;
+                if (cache && lastResult != null) {
                     restartPreviewAfterDelay(0L);
                     return true;
                 }
@@ -403,7 +411,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
         }
     }
 
-    private void decodeOrStoreSavedBitmap(Bitmap bitmap, Result result) {
+    @SuppressWarnings({"unused", "SameParameterValue"})
+    private void decodeOrStoreSavedBitmap(@Nullable Bitmap bitmap, Result result) {
         // Bitmap isn't used yet -- will be used soon
         if (handler == null) {
             savedResultToShow = result;
@@ -502,13 +511,15 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
         if (points != null && points.length > 0) {
             Canvas canvas = new Canvas(barcode);
             Paint paint = new Paint();
-            paint.setColor(getResources().getColor(R.color.result_points));
+
+            paint.setColor(ContextCompat.getColor(CaptureActivity.this,R.color.result_points));
+            boolean cache = rawResult.getBarcodeFormat() == BarcodeFormat.UPC_A ||
+                    rawResult.getBarcodeFormat() == BarcodeFormat.EAN_13;
             if (points.length == 2) {
                 paint.setStrokeWidth(4.0f);
                 drawLine(canvas, paint, points[0], points[1], scaleFactor);
             } else if (points.length == 4 &&
-                    (rawResult.getBarcodeFormat() == BarcodeFormat.UPC_A ||
-                            rawResult.getBarcodeFormat() == BarcodeFormat.EAN_13)) {
+                    cache) {
                 // Hacky special case -- draw two lines, for the barcode and metadata
                 drawLine(canvas, paint, points[0], points[1], scaleFactor);
                 drawLine(canvas, paint, points[2], points[3], scaleFactor);
@@ -534,7 +545,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     }
 
     // Put up our own UI for how to handle the decoded contents.
-    private void handleDecodeInternally(Result rawResult, ResultHandler resultHandler, Bitmap barcode) {
+    protected void handleDecodeInternally(Result rawResult, ResultHandler resultHandler, Bitmap barcode) {
 
         maybeSetClipboard(resultHandler);
 
@@ -549,7 +560,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
         viewfinderView.setVisibility(View.GONE);
         resultView.setVisibility(View.VISIBLE);
 
-        ImageView barcodeImageView = (ImageView) findViewById(R.id.barcode_image_view);
+        ImageView barcodeImageView =  findViewById(R.id.barcode_image_view);
         if (barcode == null) {
             barcodeImageView.setImageBitmap(BitmapFactory.decodeResource(getResources(),
                     R.drawable.launcher_icon));
@@ -560,15 +571,15 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
         TextView formatTextView =  findViewById(R.id.format_text_view);
         formatTextView.setText(rawResult.getBarcodeFormat().toString());
 
-        TextView typeTextView = (TextView) findViewById(R.id.type_text_view);
+        TextView typeTextView =  findViewById(R.id.type_text_view);
         typeTextView.setText(resultHandler.getType().toString());
 
         DateFormat formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
-        TextView timeTextView = (TextView) findViewById(R.id.time_text_view);
+        TextView timeTextView =  findViewById(R.id.time_text_view);
         timeTextView.setText(formatter.format(rawResult.getTimestamp()));
 
 
-        TextView metaTextView = (TextView) findViewById(R.id.meta_text_view);
+        TextView metaTextView =  findViewById(R.id.meta_text_view);
         View metaTextViewLabel = findViewById(R.id.meta_text_view_label);
         metaTextView.setVisibility(View.GONE);
         metaTextViewLabel.setVisibility(View.GONE);
@@ -589,12 +600,12 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
         }
 
         CharSequence displayContents = resultHandler.getDisplayContents();
-        TextView contentsTextView = (TextView) findViewById(R.id.contents_text_view);
+        TextView contentsTextView =  findViewById(R.id.contents_text_view);
         contentsTextView.setText(displayContents);
         int scaledSize = Math.max(22, 32 - displayContents.length() / 4);
         contentsTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSize);
 
-        TextView supplementTextView = (TextView) findViewById(R.id.contents_supplement_text_view);
+        TextView supplementTextView =  findViewById(R.id.contents_supplement_text_view);
         supplementTextView.setText("");
         supplementTextView.setOnClickListener(null);
         if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean(
@@ -618,16 +629,6 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
                 button.setVisibility(View.GONE);
             }
         }
-
-        String formatType = rawResult.getBarcodeFormat().toString();
-        Log.w("TEST", "formatType = " + formatType);
-        String text = rawResult.getText();
-        Log.w("TEST", "text = " + text);
-        Intent intent = new Intent();
-        intent.putExtra(FORMAT,formatType);
-        intent.putExtra(TEXT,text);
-        setResult(RESULT_OK,intent);
-        finish();
     }
 
     // Briefly show the contents of the barcode, then handle the result outside Barcode Scanner.
@@ -650,7 +651,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
             if (rawResultString.length() > 32) {
                 rawResultString = rawResultString.substring(0, 32) + " ...";
             }
-            statusView.setText(getString(resultHandler.getDisplayTitle()) + " : " + rawResultString);
+            String text = getString(resultHandler.getDisplayTitle()) + " : " + rawResultString;
+            statusView.setText(text);
         }
 
         maybeSetClipboard(resultHandler);
@@ -671,7 +673,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
                 if (metadata != null) {
                     if (metadata.containsKey(ResultMetadataType.UPC_EAN_EXTENSION)) {
                         intent.putExtra(Intents.Scan.RESULT_UPC_EAN_EXTENSION,
-                                metadata.get(ResultMetadataType.UPC_EAN_EXTENSION).toString());
+                                Objects.requireNonNull(metadata.get(ResultMetadataType.UPC_EAN_EXTENSION)).toString());
                     }
                     Number orientation = (Number) metadata.get(ResultMetadataType.ORIENTATION);
                     if (orientation != null) {

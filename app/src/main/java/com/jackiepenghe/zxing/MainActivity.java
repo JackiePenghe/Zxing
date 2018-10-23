@@ -10,6 +10,7 @@ import android.widget.Button;
 import com.google.zxing.client.android.CaptureActivity;
 import com.jackiepenghe.baselibrary.BaseAppCompatActivity;
 import com.jackiepenghe.baselibrary.Tool;
+import com.jackiepenghe.zxinglibrary.ScanAllActivity;
 
 /**
  * @author jackie
@@ -22,7 +23,7 @@ public class MainActivity extends BaseAppCompatActivity {
         public void onClick(View v) {
             switch (v.getId()) {
                 case R.id.start_scan:
-                    Intent intent = new Intent(MainActivity.this, CaptureActivity.class);
+                    Intent intent = new Intent(MainActivity.this, ScanAllActivity.class);
                     startActivityForResult(intent, 1);
                     break;
                 default:
