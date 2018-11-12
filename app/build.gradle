@@ -1,17 +1,12 @@
 apply plugin: 'com.android.application'
-
-//apply plugin: 'kotlin-android'
-
-//apply plugin: 'kotlin-android-extensions'
-
 android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "com.jackiepenghe.zxing"
         minSdkVersion 19
         targetSdkVersion 28
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "0.0.2"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {

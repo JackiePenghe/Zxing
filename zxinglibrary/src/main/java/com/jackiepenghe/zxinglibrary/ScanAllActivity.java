@@ -14,6 +14,8 @@ import com.google.zxing.client.android.result.ResultHandler;
  */
 public class ScanAllActivity extends CaptureActivity {
 
+    public static final int QR_CODE_SCAN_RESULT_CODE = 2;
+
     @Override
     protected void handleDecodeInternally(Result rawResult, ResultHandler resultHandler, Bitmap barcode) {
         String formatType = rawResult.getBarcodeFormat().toString();
@@ -23,7 +25,7 @@ public class ScanAllActivity extends CaptureActivity {
         Intent intent = new Intent();
         intent.putExtra(FORMAT,formatType);
         intent.putExtra(TEXT,text);
-        setResult(RESULT_OK,intent);
+        setResult(QR_CODE_SCAN_RESULT_CODE,intent);
         finish();
     }
 

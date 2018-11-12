@@ -134,7 +134,7 @@ public class MainActivity extends BaseAppCompatActivity {
             return;
         }
 
-        if (resultCode != CaptureActivity.RESULT_OK) {
+        if (resultCode != ScanAllActivity.QR_CODE_SCAN_RESULT_CODE) {
             return;
         }
         if (intent == null) {
