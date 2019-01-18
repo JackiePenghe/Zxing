@@ -41,12 +41,12 @@ final class DecodeThread extends Thread {
   public static final String BARCODE_BITMAP = "barcode_bitmap";
   public static final String BARCODE_SCALED_FACTOR = "barcode_scaled_factor";
 
-  private final CaptureActivity activity;
+  private final BaseCaptureActivity activity;
   private final Map<DecodeHintType,Object> hints;
   private Handler handler;
   private final CountDownLatch handlerInitLatch;
 
-  DecodeThread(CaptureActivity activity,
+  DecodeThread(BaseCaptureActivity activity,
                Collection<BarcodeFormat> decodeFormats,
                Map<DecodeHintType,?> baseHints,
                String characterSet,

@@ -8,9 +8,10 @@ import android.view.View;
 import android.widget.Button;
 
 import com.google.zxing.client.android.CaptureActivity;
+import com.google.zxing.client.android.Intents;
 import com.jackiepenghe.baselibrary.BaseAppCompatActivity;
 import com.jackiepenghe.baselibrary.Tool;
-import com.jackiepenghe.zxinglibrary.ScanAllActivity;
+import com.google.zxing.client.android.ScanAllActivity;
 
 /**
  * @author jackie
@@ -23,7 +24,11 @@ public class MainActivity extends BaseAppCompatActivity {
         public void onClick(View v) {
             switch (v.getId()) {
                 case R.id.start_scan:
-                    Intent intent = new Intent(MainActivity.this, ScanAllActivity.class);
+//                    Intent intent = new Intent(MainActivity.this, ScanAllActivity.class);
+//                    startActivityForResult(intent, 1);
+                    Intent intent = new Intent();
+                    intent.setAction(Intents.Scan.ACTION);
+                    intent.addCategory(Intent.CATEGORY_DEFAULT);
                     startActivityForResult(intent, 1);
                     break;
                 default:

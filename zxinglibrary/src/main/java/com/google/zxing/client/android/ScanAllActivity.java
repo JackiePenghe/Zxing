@@ -1,36 +1,4 @@
-/*
- * Copyright (C) 2008 ZXing authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.google.zxing.client.android;
-
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.DecodeHintType;
-import com.google.zxing.Result;
-import com.google.zxing.ResultMetadataType;
-import com.google.zxing.ResultPoint;
-import com.google.zxing.client.android.camera.CameraManager;
-import com.google.zxing.client.android.clipboard.ClipboardInterface;
-import com.google.zxing.client.android.history.HistoryActivity;
-import com.google.zxing.client.android.history.HistoryItem;
-import com.google.zxing.client.android.history.HistoryManager;
-import com.google.zxing.client.android.result.ResultButtonListener;
-import com.google.zxing.client.android.result.ResultHandler;
-import com.google.zxing.client.android.result.ResultHandlerFactory;
-import com.google.zxing.client.android.result.supplement.SupplementalInfoRetriever;
-import com.google.zxing.client.android.share.ShareActivity;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -39,10 +7,10 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -50,48 +18,62 @@ import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.Result;
+import com.google.zxing.ResultMetadataType;
+import com.google.zxing.ResultPoint;
+import com.google.zxing.client.android.AmbientLightManager;
+import com.google.zxing.client.android.BeepManager;
+import com.google.zxing.client.android.CaptureActivity;
+import com.google.zxing.client.android.CaptureActivityHandler;
+import com.google.zxing.client.android.HelpActivity;
+import com.google.zxing.client.android.InactivityTimer;
+import com.google.zxing.client.android.IntentSource;
+import com.google.zxing.client.android.Intents;
+import com.google.zxing.client.android.PreferencesActivity;
+import com.google.zxing.client.android.ScanFromWebPageManager;
+import com.google.zxing.client.android.ViewfinderView;
+import com.google.zxing.client.android.camera.CameraManager;
+import com.google.zxing.client.android.clipboard.ClipboardInterface;
+import com.google.zxing.client.android.history.HistoryActivity;
+import com.google.zxing.client.android.history.HistoryItem;
+import com.google.zxing.client.android.history.HistoryManager;
+import com.google.zxing.client.android.result.ResultHandler;
+import com.google.zxing.client.android.result.ResultHandlerFactory;
+import com.google.zxing.client.android.share.ShareActivity;
 import com.jackiepenghe.zxinglibrary.R;
 
 import java.io.IOException;
-import java.text.DateFormat;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
 
+import static com.google.zxing.client.android.CaptureActivity.FORMAT;
+import static com.google.zxing.client.android.CaptureActivity.TEXT;
+
 /**
- * This activity opens the camera and does the actual scanning on a background thread. It draws a
- * viewfinder to help the user place the barcode correctly, shows feedback as the image processing
- * is happening, and then overlays the results when a scan is successful.
- *
- * @author dswitkin@google.com (Daniel Switkin)
- * @author Sean Owen
+ * @author jackie
  */
-public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolder.Callback {
-
-    private static final String TAG = CaptureActivity.class.getSimpleName();
-
+public class ScanAllActivity extends BaseCaptureActivity implements  SurfaceHolder.Callback  {
     //    private static final long DEFAULT_INTENT_RESULT_DURATION_MS = 1500L;
     private static final long DEFAULT_INTENT_RESULT_DURATION_MS = 1;
     private static final long BULK_MODE_SCAN_DELAY_MS = 1000L;
 
     private static final String[] ZXING_URLS = {"http://zxing.appspot.com/scan", "zxing://scan/"};
-
     private static final int HISTORY_REQUEST_CODE = 0x0000bacc;
 
     private static final Collection<ResultMetadataType> DISPLAYABLE_METADATA_TYPES =
@@ -99,9 +81,8 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
                     ResultMetadataType.SUGGESTED_PRICE,
                     ResultMetadataType.ERROR_CORRECTION_LEVEL,
                     ResultMetadataType.POSSIBLE_COUNTRY);
-    public static final String FORMAT = "format";
-    public static final String TEXT = "text";
-
+    public static final int QR_CODE_SCAN_RESULT_CODE = 2;
+    private static final String TAG = ScanAllActivity.class.getSimpleName();
     private CameraManager cameraManager;
     private CaptureActivityHandler handler;
     private Result savedResultToShow;
@@ -121,6 +102,7 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
     private InactivityTimer inactivityTimer;
     private BeepManager beepManager;
     private AmbientLightManager ambientLightManager;
+
 
     @Override
     public ViewfinderView getViewfinderView() {
@@ -143,7 +125,7 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
 
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        setContentView(R.layout.capture);
+        setContentView(R.layout.scan_all);
 
         hasSurface = false;
         inactivityTimer = new InactivityTimer(this);
@@ -153,10 +135,29 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
     }
 
+    /**
+     * Called after {@link #onRestoreInstanceState}, {@link #onRestart}, or
+     * {@link #onPause}, for your activity to start interacting with the user.
+     * This is a good place to begin animations, open exclusive-access devices
+     * (such as the camera), etc.
+     *
+     * <p>Keep in mind that onResume is not the best indicator that your activity
+     * is visible to the user; a system window such as the keyguard may be in
+     * front.  Use {@link #onWindowFocusChanged} to know for certain that your
+     * activity is visible to the user (for example, to resume a game).
+     *
+     * <p><em>Derived classes must call through to the super class's
+     * implementation of this method.  If they do not, an exception will be
+     * thrown.</em></p>
+     *
+     * @see #onRestoreInstanceState
+     * @see #onRestart
+     * @see #onPostResume
+     * @see #onPause
+     */
     @Override
     protected void onResume() {
         super.onResume();
-
         // historyManager must be initialized here to update the history preference
         historyManager = new HistoryManager(this);
         historyManager.trimHistory();
@@ -311,6 +312,44 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
         return false;
     }
 
+    /**
+     * Called as part of the activity lifecycle when an activity is going into
+     * the background, but has not (yet) been killed.  The counterpart to
+     * {@link #onResume}.
+     *
+     * <p>When activity B is launched in front of activity A, this callback will
+     * be invoked on A.  B will not be created until A's {@link #onPause} returns,
+     * so be sure to not do anything lengthy here.
+     *
+     * <p>This callback is mostly used for saving any persistent state the
+     * activity is editing, to present a "edit in place" model to the user and
+     * making sure nothing is lost if there are not enough resources to start
+     * the new activity without first killing this one.  This is also a good
+     * place to do things like stop animations and other things that consume a
+     * noticeable amount of CPU in order to make the switch to the next activity
+     * as fast as possible, or to close resources that are exclusive access
+     * such as the camera.
+     *
+     * <p>In situations where the system needs more memory it may kill paused
+     * processes to reclaim resources.  Because of this, you should be sure
+     * that all of your state is saved by the time you return from
+     * this function.  In general {@link #onSaveInstanceState} is used to save
+     * per-instance state in the activity and this method is used to store
+     * global persistent data (in content providers, files, etc.)
+     *
+     * <p>After receiving this call you will usually receive a following call
+     * to {@link #onStop} (after the next activity has been resumed and
+     * displayed), however in some cases there will be a direct call back to
+     * {@link #onResume} without going through the stopped state.
+     *
+     * <p><em>Derived classes must call through to the super class's
+     * implementation of this method.  If they do not, an exception will be
+     * thrown.</em></p>
+     *
+     * @see #onResume
+     * @see #onSaveInstanceState
+     * @see #onStop
+     */
     @Override
     protected void onPause() {
         if (handler != null) {
@@ -330,12 +369,68 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
         super.onPause();
     }
 
+    /**
+     * Perform any final cleanup before an activity is destroyed.  This can
+     * happen either because the activity is finishing (someone called
+     * {@link #finish} on it, or because the system is temporarily destroying
+     * this instance of the activity to save space.  You can distinguish
+     * between these two scenarios with the {@link #isFinishing} method.
+     *
+     * <p><em>Note: do not count on this method being called as a place for
+     * saving data! For example, if an activity is editing data in a content
+     * provider, those edits should be committed in either {@link #onPause} or
+     * {@link #onSaveInstanceState}, not here.</em> This method is usually implemented to
+     * free resources like threads that are associated with an activity, so
+     * that a destroyed activity does not leave such things around while the
+     * rest of its application is still running.  There are situations where
+     * the system will simply kill the activity's hosting process without
+     * calling this method (or any others) in it, so it should not be used to
+     * do things that are intended to remain around after the process goes
+     * away.
+     *
+     * <p><em>Derived classes must call through to the super class's
+     * implementation of this method.  If they do not, an exception will be
+     * thrown.</em></p>
+     *
+     * @see #onPause
+     * @see #onStop
+     * @see #finish
+     * @see #isFinishing
+     */
     @Override
     protected void onDestroy() {
         inactivityTimer.shutdown();
         super.onDestroy();
     }
 
+    /**
+     * Called when a key was pressed down and not handled by any of the views
+     * inside of the activity. So, for example, key presses while the cursor
+     * is inside a TextView will not trigger the event (unless it is a navigation
+     * to another object) because TextView handles its own key presses.
+     *
+     * <p>If the focused view didn't want this event, this method is called.
+     *
+     * <p>The default implementation takes care of {@link KeyEvent#KEYCODE_BACK}
+     * by calling {@link #onBackPressed()}, though the behavior varies based
+     * on the application compatibility mode: for
+     * {@link Build.VERSION_CODES#ECLAIR} or later applications,
+     * it will set up the dispatch to call {@link #onKeyUp} where the action
+     * will be performed; for earlier applications, it will perform the
+     * action immediately in on-down, as those versions of the platform
+     * behaved.
+     *
+     * <p>Other additional default key handling may be performed
+     * if configured with {@link #setDefaultKeyMode}.
+     *
+     * @param keyCode
+     * @param event
+     * @return Return <code>true</code> to prevent this event from being propagated
+     * further, or <code>false</code> to indicate that you have not handled
+     * this event and it should continue to be propagated.
+     * @see #onKeyUp
+     * @see KeyEvent
+     */
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
@@ -370,9 +465,8 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater menuInflater = getMenuInflater();
-        menuInflater.inflate(R.menu.capture, menu);
-        return super.onCreateOptionsMenu(menu);
+        getMenuInflater().inflate(R.menu.scan_all, menu);
+        return true;
     }
 
     @Override
@@ -395,17 +489,42 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
         } else if (i == R.id.menu_help) {
             intent.setClassName(this, HelpActivity.class.getName());
             startActivity(intent);
-
         } else {
             return super.onOptionsItemSelected(item);
         }
         return true;
     }
 
+    /**
+     * Called when an activity you launched exits, giving you the requestCode
+     * you started it with, the resultCode it returned, and any additional
+     * data from it.  The <var>resultCode</var> will be
+     * {@link #RESULT_CANCELED} if the activity explicitly returned that,
+     * didn't return any result, or crashed during its operation.
+     *
+     * <p>You will receive this call immediately before onResume() when your
+     * activity is re-starting.
+     *
+     * <p>This method is never invoked if your activity sets
+     * {@link android.R.styleable#AndroidManifestActivity_noHistory noHistory} to
+     * <code>true</code>.
+     *
+     * @param requestCode The integer request code originally supplied to
+     *                    startActivityForResult(), allowing you to identify who this
+     *                    result came from.
+     * @param resultCode  The integer result code returned by the child activity
+     *                    through its setResult().
+     * @param data        An Intent, which can return result data to the caller
+     *                    (various data can be attached to Intent "extras").
+     * @see #startActivityForResult
+     * @see #createPendingResult
+     * @see #setResult(int)
+     */
+    @SuppressWarnings("JavadocReference")
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode == RESULT_OK && requestCode == HISTORY_REQUEST_CODE && historyManager != null) {
-            int itemNumber = intent.getIntExtra(Intents.History.ITEM_NUMBER, -1);
+            int itemNumber = data.getIntExtra(Intents.History.ITEM_NUMBER, -1);
             if (itemNumber >= 0) {
                 HistoryItem historyItem = historyManager.buildHistoryItem(itemNumber);
                 Result result = historyItem.getResult();
@@ -430,6 +549,15 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
         }
     }
 
+    /**
+     * This is called immediately after the surface is first created.
+     * Implementations of this should start up whatever rendering code
+     * they desire.  Note that only one thread can ever draw into
+     * a {@link Surface}, so you should not draw into the Surface here
+     * if your normal rendering will be in another thread.
+     *
+     * @param holder The SurfaceHolder whose surface is being created.
+     */
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         if (holder == null) {
@@ -441,14 +569,34 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
         }
     }
 
+    /**
+     * This is called immediately after any structural changes (format or
+     * size) have been made to the surface.  You should at this point update
+     * the imagery in the surface.  This method is always called at least
+     * once, after {@link #surfaceCreated}.
+     *
+     * @param holder The SurfaceHolder whose surface has changed.
+     * @param format The new PixelFormat of the surface.
+     * @param width  The new width of the surface.
+     * @param height The new height of the surface.
+     */
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        //do nothing
+    }
+
+    /**
+     * This is called immediately before a surface is being destroyed. After
+     * returning from this call, you should no longer try to access this
+     * surface.  If you have a rendering thread that directly accesses
+     * the surface, you must ensure that thread is no longer touching the
+     * Surface before returning from this function.
+     *
+     * @param holder The SurfaceHolder whose surface is being destroyed.
+     */
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         hasSurface = false;
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        // do nothing
     }
 
     /**
@@ -515,7 +663,7 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
             Canvas canvas = new Canvas(barcode);
             Paint paint = new Paint();
 
-            paint.setColor(ContextCompat.getColor(CaptureActivity.this,R.color.result_points));
+            paint.setColor(ContextCompat.getColor(ScanAllActivity.this,R.color.result_points));
             boolean cache = rawResult.getBarcodeFormat() == BarcodeFormat.UPC_A ||
                     rawResult.getBarcodeFormat() == BarcodeFormat.EAN_13;
             if (points.length == 2) {
@@ -547,91 +695,16 @@ public class CaptureActivity extends BaseCaptureActivity implements SurfaceHolde
         }
     }
 
-    // Put up our own UI for how to handle the decoded contents.
-    protected void handleDecodeInternally(Result rawResult, ResultHandler resultHandler, Bitmap barcode) {
-
-        maybeSetClipboard(resultHandler);
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-        if (resultHandler.getDefaultButtonID() != null && prefs.getBoolean(PreferencesActivity.KEY_AUTO_OPEN_WEB, false)) {
-            resultHandler.handleButtonPress(resultHandler.getDefaultButtonID());
-            return;
-        }
-
-        statusView.setVisibility(View.GONE);
-        viewfinderView.setVisibility(View.GONE);
-        resultView.setVisibility(View.VISIBLE);
-
-        ImageView barcodeImageView =  findViewById(R.id.barcode_image_view);
-        if (barcode == null) {
-            barcodeImageView.setImageBitmap(BitmapFactory.decodeResource(getResources(),
-                    R.drawable.launcher_icon));
-        } else {
-            barcodeImageView.setImageBitmap(barcode);
-        }
-
-        TextView formatTextView =  findViewById(R.id.format_text_view);
-        formatTextView.setText(rawResult.getBarcodeFormat().toString());
-
-        TextView typeTextView =  findViewById(R.id.type_text_view);
-        typeTextView.setText(resultHandler.getType().toString());
-
-        DateFormat formatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
-        TextView timeTextView =  findViewById(R.id.time_text_view);
-        timeTextView.setText(formatter.format(rawResult.getTimestamp()));
-
-
-        TextView metaTextView =  findViewById(R.id.meta_text_view);
-        View metaTextViewLabel = findViewById(R.id.meta_text_view_label);
-        metaTextView.setVisibility(View.GONE);
-        metaTextViewLabel.setVisibility(View.GONE);
-        Map<ResultMetadataType, Object> metadata = rawResult.getResultMetadata();
-        if (metadata != null) {
-            StringBuilder metadataText = new StringBuilder(20);
-            for (Map.Entry<ResultMetadataType, Object> entry : metadata.entrySet()) {
-                if (DISPLAYABLE_METADATA_TYPES.contains(entry.getKey())) {
-                    metadataText.append(entry.getValue()).append('\n');
-                }
-            }
-            if (metadataText.length() > 0) {
-                metadataText.setLength(metadataText.length() - 1);
-                metaTextView.setText(metadataText);
-                metaTextView.setVisibility(View.VISIBLE);
-                metaTextViewLabel.setVisibility(View.VISIBLE);
-            }
-        }
-
-        CharSequence displayContents = resultHandler.getDisplayContents();
-        TextView contentsTextView =  findViewById(R.id.contents_text_view);
-        contentsTextView.setText(displayContents);
-        int scaledSize = Math.max(22, 32 - displayContents.length() / 4);
-        contentsTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, scaledSize);
-
-        TextView supplementTextView =  findViewById(R.id.contents_supplement_text_view);
-        supplementTextView.setText("");
-        supplementTextView.setOnClickListener(null);
-        if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean(
-                PreferencesActivity.KEY_SUPPLEMENTAL, true)) {
-            SupplementalInfoRetriever.maybeInvokeRetrieval(supplementTextView,
-                    resultHandler.getResult(),
-                    historyManager,
-                    this);
-        }
-
-        int buttonCount = resultHandler.getButtonCount();
-        ViewGroup buttonView = findViewById(R.id.result_button_view);
-        buttonView.requestFocus();
-        for (int x = 0; x < ResultHandler.MAX_BUTTON_COUNT; x++) {
-            TextView button = (TextView) buttonView.getChildAt(x);
-            if (x < buttonCount) {
-                button.setVisibility(View.VISIBLE);
-                button.setText(resultHandler.getButtonText(x));
-                button.setOnClickListener(new ResultButtonListener(resultHandler, x));
-            } else {
-                button.setVisibility(View.GONE);
-            }
-        }
+    private void handleDecodeInternally(Result rawResult, ResultHandler resultHandler, Bitmap barcode) {
+        String formatType = rawResult.getBarcodeFormat().toString();
+        Log.w("TEST", "formatType = " + formatType);
+        String text = rawResult.getText();
+        Log.w("TEST", "text = " + text);
+        Intent intent = new Intent();
+        intent.putExtra(FORMAT, formatType);
+        intent.putExtra(TEXT, text);
+        setResult(QR_CODE_SCAN_RESULT_CODE, intent);
+        finish();
     }
 
     // Briefly show the contents of the barcode, then handle the result outside Barcode Scanner.
