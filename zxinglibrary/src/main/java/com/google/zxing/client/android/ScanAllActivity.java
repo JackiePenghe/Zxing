@@ -1,6 +1,5 @@
 package com.google.zxing.client.android;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -35,17 +34,6 @@ import com.google.zxing.DecodeHintType;
 import com.google.zxing.Result;
 import com.google.zxing.ResultMetadataType;
 import com.google.zxing.ResultPoint;
-import com.google.zxing.client.android.AmbientLightManager;
-import com.google.zxing.client.android.BeepManager;
-import com.google.zxing.client.android.CaptureActivity;
-import com.google.zxing.client.android.CaptureActivityHandler;
-import com.google.zxing.client.android.HelpActivity;
-import com.google.zxing.client.android.InactivityTimer;
-import com.google.zxing.client.android.IntentSource;
-import com.google.zxing.client.android.Intents;
-import com.google.zxing.client.android.PreferencesActivity;
-import com.google.zxing.client.android.ScanFromWebPageManager;
-import com.google.zxing.client.android.ViewfinderView;
 import com.google.zxing.client.android.camera.CameraManager;
 import com.google.zxing.client.android.clipboard.ClipboardInterface;
 import com.google.zxing.client.android.history.HistoryActivity;

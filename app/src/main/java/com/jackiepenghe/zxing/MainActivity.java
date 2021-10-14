@@ -2,6 +2,7 @@ package com.jackiepenghe.zxing;
 
 import android.content.Intent;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -24,11 +25,11 @@ public class MainActivity extends BaseAppCompatActivity {
         public void onClick(View v) {
             switch (v.getId()) {
                 case R.id.start_scan:
-//                    Intent intent = new Intent(MainActivity.this, ScanAllActivity.class);
-//                    startActivityForResult(intent, 1);
-                    Intent intent = new Intent();
-                    intent.setAction(Intents.Scan.ACTION);
-                    intent.addCategory(Intent.CATEGORY_DEFAULT);
+                    Intent intent = new Intent(MainActivity.this, ScanAllActivity.class);
+                    startActivityForResult(intent, 1);
+//                    Intent intent = new Intent();
+//                    intent.setAction(Intents.Scan.ACTION);
+//                    intent.addCategory(Intent.CATEGORY_DEFAULT);
                     startActivityForResult(intent, 1);
                     break;
                 default:
@@ -148,5 +149,6 @@ public class MainActivity extends BaseAppCompatActivity {
         String format = intent.getStringExtra(CaptureActivity.FORMAT);
         String text = intent.getStringExtra(CaptureActivity.TEXT);
         Tool.toastL(MainActivity.this, "format = " + format + ",\ntext = " + text);
+        Log.w("TAG", "format = " + format + ",\ntext = " + text);
     }
 }
